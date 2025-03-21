@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { PieChart, Pie, BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, Cell } from 'recharts';
 
 interface VendorMarketShare {
@@ -25,9 +25,99 @@ interface DashboardData {
   seriesBreakdown: SeriesData[];
 }
 
+// Custom tooltip components
+const CustomTooltip: React.FC<{
+  active?: boolean;
+  payload?: any[];
+  label?: string;
+  type?: 'vendor' | 'series' | 'gpu' | 'growth';
+}> = ({ active, payload, label, type }) => {
+  if (!active || !payload || !payload.length) return null;
+
+  const data = payload[0].payload;
+  
+  return (
+    <div className="bg-white dark:bg-gray-800 p-3 rounded-lg shadow-lg border border-gray-200 dark:border-gray-700">
+      {type === 'vendor' && (
+        <>
+          <p className="font-semibold text-lg">{data.vendor}</p>
+          <p className="text-gray-600 dark:text-gray-400">Market Share: {data.percentage.toFixed(2)}%</p>
+          <p className="text-sm text-gray-500 dark:text-gray-500 mt-1">
+            {data.vendor === 'AMD' && 'Leading the Linux gaming market with strong Steam Deck adoption'}
+            {data.vendor === 'NVIDIA' && 'Second-largest market share with strong RTX series presence'}
+            {data.vendor === 'INTEL' && 'Growing presence with integrated graphics solutions'}
+          </p>
+        </>
+      )}
+      
+      {type === 'series' && (
+        <>
+          <p className="font-semibold text-lg">{data.series}</p>
+          <p className="text-gray-600 dark:text-gray-400">Market Share: {data.percentage.toFixed(2)}%</p>
+          <p className="text-sm text-gray-500 dark:text-gray-500 mt-1">
+            {data.series.includes('RTX') && 'NVIDIA\'s latest generation graphics cards'}
+            {data.series.includes('Radeon RX') && 'AMD\'s gaming-focused graphics cards'}
+            {data.series.includes('UHD') && 'Intel\'s integrated graphics solutions'}
+          </p>
+        </>
+      )}
+      
+      {type === 'gpu' && (
+        <>
+          <p className="font-semibold text-lg">{data.model}</p>
+          <p className="text-gray-600 dark:text-gray-400">Market Share: {data.percentage.toFixed(2)}%</p>
+          <p className="text-gray-600 dark:text-gray-400">Monthly Change: {data.change > 0 ? '+' : ''}{data.change.toFixed(2)}%</p>
+          <p className="text-sm text-gray-500 dark:text-gray-500 mt-1">
+            {data.model.includes('Custom GPU 0405') && 'Steam Deck (Original)'}
+            {data.model.includes('RADV VANGOGH') && 'Steam Deck OLED'}
+            {data.model.includes('Raphael') && 'AMD Ryzen 7000 Series Integrated Graphics'}
+          </p>
+        </>
+      )}
+      
+      {type === 'growth' && (
+        <>
+          <p className="font-semibold text-lg">{data.model}</p>
+          <p className="text-gray-600 dark:text-gray-400">Monthly Growth: +{data.change.toFixed(2)}%</p>
+          <p className="text-gray-600 dark:text-gray-400">Current Share: {data.percentage.toFixed(2)}%</p>
+          <p className="text-sm text-gray-500 dark:text-gray-500 mt-1">
+            {data.model.includes('Custom GPU 0405') && 'Steam Deck (Original) - Leading growth in Linux gaming'}
+            {data.model.includes('RADV VANGOGH') && 'Steam Deck OLED - Strong adoption of the new model'}
+            {data.model.includes('Raphael') && 'AMD Ryzen 7000 Series - Growing integrated graphics adoption'}
+          </p>
+        </>
+      )}
+    </div>
+  );
+};
+
+const LoadingSkeleton: React.FC = () => (
+  <div className="animate-pulse">
+    <div className="h-8 bg-gray-200 dark:bg-gray-700 rounded w-3/4 mx-auto mb-4"></div>
+    <div className="h-4 bg-gray-200 dark:bg-gray-700 rounded w-1/2 mx-auto mb-8"></div>
+    <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+      {[1, 2, 3, 4].map((i) => (
+        <div key={i} className="bg-white dark:bg-gray-800 rounded-lg shadow p-4">
+          <div className="h-6 bg-gray-200 dark:bg-gray-700 rounded w-1/3 mb-4"></div>
+          <div className="h-64 bg-gray-200 dark:bg-gray-700 rounded"></div>
+        </div>
+      ))}
+    </div>
+    <div className="mt-6 p-4 bg-white dark:bg-gray-800 rounded-lg shadow">
+      <div className="h-6 bg-gray-200 dark:bg-gray-700 rounded w-1/4 mb-4"></div>
+      <div className="space-y-2">
+        {[1, 2, 3, 4, 5].map((i) => (
+          <div key={i} className="h-4 bg-gray-200 dark:bg-gray-700 rounded w-full"></div>
+        ))}
+      </div>
+    </div>
+  </div>
+);
+
 const LinuxGPUDashboard: React.FC = () => {
   const [data, setData] = useState<DashboardData | null>(null);
   const [loading, setLoading] = useState(true);
+  const [darkMode, setDarkMode] = useState(false);
   
   // Color schemes
   const VENDOR_COLORS: Record<string, string> = {
@@ -42,6 +132,13 @@ const LinuxGPUDashboard: React.FC = () => {
     '#d0ed57', '#ffc658', '#ff8042', '#ff6361', '#bc5090',
     '#58508d', '#003f5c'
   ];
+
+  // Memoized chart colors based on dark mode
+  const chartColors = useMemo(() => ({
+    background: darkMode ? '#1F2937' : '#FFFFFF',
+    text: darkMode ? '#F3F4F6' : '#111827',
+    grid: darkMode ? '#374151' : '#E5E7EB',
+  }), [darkMode]);
 
   useEffect(() => {
     // Use hardcoded data based on our previous analysis
@@ -90,26 +187,34 @@ const LinuxGPUDashboard: React.FC = () => {
     setLoading(false);
   }, []);
   
+  const formatPercentage = (value: number): string => `${value.toFixed(2)}%`;
+
   if (loading) {
-    return <div className="flex items-center justify-center h-screen">Loading Linux GPU data...</div>;
+    return <LoadingSkeleton />;
   }
   
   if (!data) {
     return <div className="p-4">No data available</div>;
   }
-  
-  const formatPercentage = (value: number): string => `${value.toFixed(2)}%`;
 
   return (
-    <div className="container mx-auto p-4 bg-gray-50">
-      <div className="text-center mb-6">
-        <h1 className="text-2xl font-bold mb-2">Linux GPU Usage Dashboard</h1>
-        <p className="text-gray-600">Based on Steam Hardware Survey data</p>
+    <div className={`container mx-auto p-4 ${darkMode ? 'bg-gray-900 text-white' : 'bg-gray-50'}`}>
+      <div className="flex justify-between items-center mb-6">
+        <div className="text-center">
+          <h1 className="text-2xl font-bold mb-2">Linux GPU Usage Dashboard</h1>
+          <p className="text-gray-600 dark:text-gray-400">Based on Steam Hardware Survey data</p>
+        </div>
+        <button
+          onClick={() => setDarkMode(!darkMode)}
+          className="px-4 py-2 rounded-lg bg-gray-200 dark:bg-gray-700 hover:bg-gray-300 dark:hover:bg-gray-600 transition-colors"
+        >
+          {darkMode ? '☀️ Light Mode' : '🌙 Dark Mode'}
+        </button>
       </div>
       
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         {/* Vendor Market Share */}
-        <div className="bg-white rounded-lg shadow p-4">
+        <div className={`rounded-lg shadow p-4 ${darkMode ? 'bg-gray-800' : 'bg-white'}`}>
           <h2 className="text-xl font-semibold mb-4">Vendor Market Share</h2>
           <ResponsiveContainer width="100%" height={300}>
             <PieChart>
@@ -126,21 +231,49 @@ const LinuxGPUDashboard: React.FC = () => {
                   <Cell key={`cell-${index}`} fill={VENDOR_COLORS[entry.vendor] || SERIES_COLORS[index % SERIES_COLORS.length]} />
                 ))}
               </Pie>
-              <Tooltip formatter={formatPercentage} />
-              <Legend />
+              <Tooltip 
+                content={<CustomTooltip type="vendor" />}
+                contentStyle={{
+                  backgroundColor: 'transparent',
+                  border: 'none',
+                  boxShadow: 'none',
+                }}
+              />
+              <Legend 
+                wrapperStyle={{
+                  color: chartColors.text,
+                }}
+              />
             </PieChart>
           </ResponsiveContainer>
         </div>
         
         {/* GPU Series Breakdown */}
-        <div className="bg-white rounded-lg shadow p-4">
+        <div className={`rounded-lg shadow p-4 ${darkMode ? 'bg-gray-800' : 'bg-white'}`}>
           <h2 className="text-xl font-semibold mb-4">GPU Series Breakdown</h2>
           <ResponsiveContainer width="100%" height={300}>
             <BarChart data={data.seriesBreakdown}>
-              <CartesianGrid strokeDasharray="3 3" />
-              <XAxis dataKey="series" tick={{fontSize: 10}} interval={0} angle={-45} textAnchor="end" height={80} />
-              <YAxis tickFormatter={formatPercentage} />
-              <Tooltip formatter={formatPercentage} />
+              <CartesianGrid strokeDasharray="3 3" stroke={chartColors.grid} />
+              <XAxis 
+                dataKey="series" 
+                tick={{fontSize: 10, fill: chartColors.text}} 
+                interval={0} 
+                angle={-45} 
+                textAnchor="end" 
+                height={80} 
+              />
+              <YAxis 
+                tickFormatter={formatPercentage}
+                tick={{fill: chartColors.text}}
+              />
+              <Tooltip 
+                content={<CustomTooltip type="series" />}
+                contentStyle={{
+                  backgroundColor: 'transparent',
+                  border: 'none',
+                  boxShadow: 'none',
+                }}
+              />
               <Bar dataKey="percentage" name="Market Share">
                 {data.seriesBreakdown.map((entry: SeriesData, index: number) => (
                   <Cell key={`cell-${index}`} fill={SERIES_COLORS[index % SERIES_COLORS.length]} />
@@ -151,7 +284,7 @@ const LinuxGPUDashboard: React.FC = () => {
         </div>
         
         {/* Top 10 GPUs */}
-        <div className="bg-white rounded-lg shadow p-4">
+        <div className={`rounded-lg shadow p-4 ${darkMode ? 'bg-gray-800' : 'bg-white'}`}>
           <h2 className="text-xl font-semibold mb-4">Top 10 Linux GPUs</h2>
           <ResponsiveContainer width="100%" height={360}>
             <BarChart 
@@ -159,15 +292,26 @@ const LinuxGPUDashboard: React.FC = () => {
               layout="vertical"
               margin={{ top: 5, right: 30, left: 150, bottom: 5 }}
             >
-              <CartesianGrid strokeDasharray="3 3" />
-              <XAxis type="number" tickFormatter={formatPercentage} />
+              <CartesianGrid strokeDasharray="3 3" stroke={chartColors.grid} />
+              <XAxis 
+                type="number" 
+                tickFormatter={formatPercentage}
+                tick={{fill: chartColors.text}}
+              />
               <YAxis 
                 type="category" 
                 dataKey="model" 
                 width={150}
-                tick={{ fontSize: 10 }} 
+                tick={{ fontSize: 10, fill: chartColors.text }} 
               />
-              <Tooltip formatter={formatPercentage} />
+              <Tooltip 
+                content={<CustomTooltip type="gpu" />}
+                contentStyle={{
+                  backgroundColor: 'transparent',
+                  border: 'none',
+                  boxShadow: 'none',
+                }}
+              />
               <Bar dataKey="percentage" name="Market Share">
                 {data.top10GPUs.map((entry: GPUData, index: number) => (
                   <Cell key={`cell-${index}`} fill={VENDOR_COLORS[entry.vendor] || '#888888'} />
@@ -178,7 +322,7 @@ const LinuxGPUDashboard: React.FC = () => {
         </div>
         
         {/* Fastest Growing GPUs */}
-        <div className="bg-white rounded-lg shadow p-4">
+        <div className={`rounded-lg shadow p-4 ${darkMode ? 'bg-gray-800' : 'bg-white'}`}>
           <h2 className="text-xl font-semibold mb-4">Fastest Growing GPUs</h2>
           <ResponsiveContainer width="100%" height={360}>
             <BarChart 
@@ -186,17 +330,25 @@ const LinuxGPUDashboard: React.FC = () => {
               layout="vertical"
               margin={{ top: 5, right: 30, left: 150, bottom: 5 }}
             >
-              <CartesianGrid strokeDasharray="3 3" />
-              <XAxis type="number" tickFormatter={(value: number) => `+${value.toFixed(2)}%`} />
+              <CartesianGrid strokeDasharray="3 3" stroke={chartColors.grid} />
+              <XAxis 
+                type="number" 
+                tickFormatter={(value: number) => `+${value.toFixed(2)}%`}
+                tick={{fill: chartColors.text}}
+              />
               <YAxis 
                 type="category" 
                 dataKey="model" 
                 width={150}
-                tick={{ fontSize: 10 }} 
+                tick={{ fontSize: 10, fill: chartColors.text }} 
               />
               <Tooltip 
-                formatter={(value: number) => `+${value.toFixed(2)}%`} 
-                labelFormatter={(label: string) => `Growth`} 
+                content={<CustomTooltip type="growth" />}
+                contentStyle={{
+                  backgroundColor: 'transparent',
+                  border: 'none',
+                  boxShadow: 'none',
+                }}
               />
               <Bar dataKey="change" name="Monthly Change">
                 {data.growingGPUs.map((entry: GPUData, index: number) => (
@@ -208,7 +360,7 @@ const LinuxGPUDashboard: React.FC = () => {
         </div>
       </div>
       
-      <div className="mt-6 p-4 bg-white rounded-lg shadow">
+      <div className={`mt-6 p-4 rounded-lg shadow ${darkMode ? 'bg-gray-800' : 'bg-white'}`}>
         <h2 className="text-xl font-semibold mb-4">Key Insights</h2>
         <ul className="list-disc pl-6 space-y-2">
           <li>AMD dominates the Linux gaming GPU market with {data.vendorMarketShare.find((v: VendorMarketShare) => v.vendor === 'AMD')?.percentage.toFixed(2)}% market share.</li>
