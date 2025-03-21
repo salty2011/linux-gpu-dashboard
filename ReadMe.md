@@ -1,40 +1,46 @@
 # Linux GPU Dashboard
 
-A visualization of Linux GPU usage based on Steam Hardware Survey data. This dashboard shows the distribution of GPUs among Linux gamers on the Steam platform.
-
-## Live Demo
-
-View the live dashboard at: [https://YOUR-USERNAME.github.io/linux-gpu-dashboard/](https://YOUR-USERNAME.github.io/linux-gpu-dashboard/)
+A React-based dashboard showing Linux GPU usage statistics based on Steam Hardware Survey data.
 
 ## Features
 
-- **Vendor Market Share**: Distribution of GPU vendors (AMD, NVIDIA, Intel) in the Linux gaming market
-- **GPU Series Breakdown**: Analysis of GPU families and series popularity
-- **Top 10 Linux GPUs**: Most popular GPU models among Linux gamers
-- **Fastest Growing GPUs**: GPU models with the highest month-over-month growth
+- Vendor market share visualization
+- Top 10 Linux GPUs breakdown
+- Fastest growing GPUs analysis
+- GPU series breakdown
+- Key insights and trends
 
-## Key Insights
+## Local Development
 
-- AMD dominates the Linux gaming GPU market with nearly 70% market share
-- The Steam Deck's GPU (AMD Custom GPU 0405) is the most common GPU among Linux gamers
-- Steam Deck devices (original and OLED) account for approximately 35% of all Linux gaming on Steam
+1. Install dependencies:
+```bash
+npm install
+```
 
-## Technology
+2. Start the development server:
+```bash
+npm start
+```
 
-This dashboard is built with:
+3. Open [http://localhost:3000](http://localhost:3000) to view it in your browser.
+
+## Deployment
+
+This project is configured to deploy automatically to GitHub Pages when changes are pushed to the main branch.
+
+To deploy manually:
+```bash
+npm run deploy
+```
+
+## Technologies Used
+
 - React
-- Recharts for data visualization
-- Tailwind CSS for styling
-
-## Development
-
-1. Clone this repository
-2. Open index.html in your browser to view the dashboard locally
-3. Modify dashboard.js to update the visualization
-
-## Data Source
-
-Data is based on the Steam Hardware Survey results for Linux users. The survey collects anonymous information about Steam users' hardware configurations.
+- TypeScript
+- Recharts
+- Tailwind CSS
+- GitHub Actions
+- GitHub Pages
 
 ## License
 
