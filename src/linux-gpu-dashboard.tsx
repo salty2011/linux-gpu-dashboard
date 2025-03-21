@@ -25,17 +25,9 @@ interface DashboardData {
   seriesBreakdown: SeriesData[];
 }
 
-interface RawDataRow {
-  "GPU MODEL": string;
-  " PERCENTAGE": string | number;
-  " CHANGE": string | number;
-  "VENDOR": string;
-}
-
 const LinuxGPUDashboard: React.FC = () => {
   const [data, setData] = useState<DashboardData | null>(null);
   const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
   
   // Color schemes
   const VENDOR_COLORS: Record<string, string> = {
@@ -98,147 +90,8 @@ const LinuxGPUDashboard: React.FC = () => {
     setLoading(false);
   }, []);
   
-  const processData = (rawData: RawDataRow[]): DashboardData => {
-    // Clean and transform data
-    const cleanData = rawData.map(row => {
-      const model = row["GPU MODEL"];
-      const percentageStr = row[" PERCENTAGE"];
-      const changeStr = row[" CHANGE"];
-      const vendor = row["VENDOR"];
-      
-      // Clean percentage and change values
-      let percentage = 0;
-      if (typeof percentageStr === 'string') {
-        percentage = parseFloat(percentageStr.replace('%', ''));
-      } else if (typeof percentageStr === 'number') {
-        percentage = percentageStr;
-      }
-      
-      let change = 0;
-      if (typeof changeStr === 'string') {
-        change = parseFloat(changeStr.replace('%', ''));
-      } else if (typeof changeStr === 'number') {
-        change = changeStr;
-      }
-      
-      return {
-        model,
-        percentage: isNaN(percentage) ? 0 : percentage,
-        change: isNaN(change) ? 0 : change,
-        vendor
-      };
-    });
-    
-    // Calculate vendor market share
-    const vendorMarketShare: Record<string, number> = {};
-    let totalPercentage = 0;
-    
-    cleanData.forEach(gpu => {
-      if (gpu.vendor) {
-        vendorMarketShare[gpu.vendor] = (vendorMarketShare[gpu.vendor] || 0) + gpu.percentage;
-        totalPercentage += gpu.percentage;
-      }
-    });
-    
-    // Calculate vendor share as percentages of total
-    const vendorSharePercentage: Record<string, number> = {};
-    Object.keys(vendorMarketShare).forEach(vendor => {
-      vendorSharePercentage[vendor] = (vendorMarketShare[vendor] / totalPercentage) * 100;
-    });
-    
-    // Get top 10 GPUs
-    const top10GPUs = [...cleanData]
-      .sort((a, b) => b.percentage - a.percentage)
-      .slice(0, 10);
-    
-    // Find fastest growing GPUs
-    const growingGPUs = [...cleanData]
-      .filter(gpu => gpu.change > 0)
-      .sort((a, b) => b.change - a.change)
-      .slice(0, 5);
-    
-    // Analyze by GPU series
-    const seriesAnalysis: Record<string, number> = {};
-    cleanData.forEach(gpu => {
-      let series = "Other";
-      
-      if (gpu.model) {
-        if (gpu.model.includes("RTX")) {
-          const match = gpu.model.match(/RTX\s+(\d+)/);
-          if (match) {
-            series = `NVIDIA RTX ${match[1].charAt(0)}000`;
-          } else {
-            series = "NVIDIA RTX";
-          }
-        } else if (gpu.model.includes("GTX")) {
-          const match = gpu.model.match(/GTX\s+(\d+)/);
-          if (match) {
-            series = `NVIDIA GTX ${match[1].charAt(0)}000`;
-          } else {
-            series = "NVIDIA GTX";
-          }
-        } else if (gpu.model.includes("Radeon RX")) {
-          const match = gpu.model.match(/RX\s+(\d+)/);
-          if (match) {
-            series = `AMD RX ${match[1].charAt(0)}000`;
-          } else {
-            series = "AMD RX";
-          }
-        } else if (gpu.model.includes("Intel") && gpu.model.includes("Graphics")) {
-          if (gpu.model.includes("Iris")) {
-            series = "Intel Iris";
-          } else if (gpu.model.includes("UHD")) {
-            series = "Intel UHD";
-          } else if (gpu.model.includes("HD")) {
-            series = "Intel HD";
-          } else {
-            series = "Intel Graphics";
-          }
-        }
-      }
-      
-      seriesAnalysis[series] = (seriesAnalysis[series] || 0) + gpu.percentage;
-    });
-    
-    // Format series data for chart
-    const seriesData = Object.entries(seriesAnalysis)
-      .map(([series, percentage]) => ({ series, percentage }))
-      .sort((a, b) => b.percentage - a.percentage)
-      .slice(0, 12); // Top 12 series
-    
-    return {
-      vendorMarketShare: Object.entries(vendorSharePercentage).map(([vendor, percentage]) => ({
-        vendor,
-        percentage: parseFloat(percentage.toFixed(2))
-      })),
-      
-      top10GPUs: top10GPUs.map(gpu => ({
-        model: gpu.model,
-        vendor: gpu.vendor || "Unknown",
-        percentage: parseFloat(gpu.percentage.toFixed(2)),
-        change: parseFloat(gpu.change.toFixed(2))
-      })),
-      
-      growingGPUs: growingGPUs.map(gpu => ({
-        model: gpu.model,
-        vendor: gpu.vendor || "Unknown",
-        percentage: parseFloat(gpu.percentage.toFixed(2)),
-        change: parseFloat(gpu.change.toFixed(2))
-      })),
-      
-      seriesBreakdown: seriesData.map(item => ({
-        series: item.series,
-        percentage: parseFloat(item.percentage.toFixed(2))
-      }))
-    };
-  };
-  
   if (loading) {
     return <div className="flex items-center justify-center h-screen">Loading Linux GPU data...</div>;
-  }
-  
-  if (error) {
-    return <div className="text-red-500 p-4">{error}</div>;
   }
   
   if (!data) {
