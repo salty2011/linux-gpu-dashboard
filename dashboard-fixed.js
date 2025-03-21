@@ -1,4 +1,4 @@
-// dashboard.js - Fixed for GitHub Pages
+// dashboard.js - Enhanced visual version
 const { useState, useEffect } = React;
 
 // Define LinuxGPUDashboard component
@@ -101,6 +101,23 @@ const LinuxGPUDashboard = () => {
   const topGrowingModel = topGrowingGpu.model || "N/A";
   const topGrowingChange = topGrowingGpu.change ? topGrowingGpu.change.toFixed(2) : "N/A";
 
+  // Helper function to create visual bar
+  const createBar = (percentage, color, maxWidth = 100) => {
+    const width = Math.min(percentage, 100);
+    const barStyle = {
+      width: `${width}%`, 
+      maxWidth: `${maxWidth}%`,
+      backgroundColor: color,
+      height: '20px',
+      borderRadius: '4px',
+      display: 'inline-block',
+      marginRight: '8px',
+      transition: 'width 0.5s ease'
+    };
+    
+    return React.createElement("div", { style: barStyle });
+  };
+
   // Use React.createElement instead of JSX
   return React.createElement("div", { className: "container mx-auto p-4 bg-gray-50 max-w-6xl" },
     React.createElement("div", { className: "text-center mb-6" },
@@ -112,19 +129,29 @@ const LinuxGPUDashboard = () => {
       // Vendor Market Share
       React.createElement("div", { className: "bg-white rounded-lg shadow p-4" },
         React.createElement("h2", { className: "text-xl font-semibold mb-4" }, "Vendor Market Share"),
-        React.createElement("div", { className: "h-72 w-full" }, 
+        React.createElement("div", { className: "w-full" }, 
           data.vendorMarketShare.map(function(item, index) {
             return React.createElement("div", { 
               key: item.vendor,
-              className: "flex items-center mb-2" 
+              className: "mb-4" 
             },
-              React.createElement("div", { 
-                className: "w-4 h-4 mr-2",
-                style: { backgroundColor: VENDOR_COLORS[item.vendor] || SERIES_COLORS[index] }
-              }),
-              React.createElement("div", { className: "flex-1" }, item.vendor),
-              React.createElement("div", { className: "font-semibold" }, 
-                formatPercentage(item.percentage)
+              React.createElement("div", { className: "flex justify-between mb-1" },
+                React.createElement("span", { 
+                  className: "font-medium",
+                  style: { color: VENDOR_COLORS[item.vendor] || SERIES_COLORS[index] }
+                }, item.vendor),
+                React.createElement("span", { className: "font-semibold" }, 
+                  formatPercentage(item.percentage)
+                )
+              ),
+              React.createElement("div", { className: "w-full bg-gray-200 rounded-full h-2.5" },
+                React.createElement("div", { 
+                  className: "h-2.5 rounded-full",
+                  style: { 
+                    width: `${item.percentage}%`, 
+                    backgroundColor: VENDOR_COLORS[item.vendor] || SERIES_COLORS[index]
+                  } 
+                })
               )
             );
           })
@@ -135,22 +162,28 @@ const LinuxGPUDashboard = () => {
       React.createElement("div", { className: "bg-white rounded-lg shadow p-4" },
         React.createElement("h2", { className: "text-xl font-semibold mb-4" }, "GPU Series Breakdown"),
         React.createElement("div", { className: "h-72 overflow-y-auto" },
-          React.createElement("table", { className: "w-full" },
-            React.createElement("thead", {},
-              React.createElement("tr", {},
-                React.createElement("th", { className: "text-left pb-2" }, "Series"),
-                React.createElement("th", { className: "text-right pb-2" }, "Market Share")
+          data.seriesBreakdown.slice(0, 10).map(function(item, index) {
+            return React.createElement("div", { 
+              key: item.series,
+              className: "mb-3" 
+            },
+              React.createElement("div", { className: "flex justify-between mb-1" },
+                React.createElement("span", { className: "font-medium" }, item.series),
+                React.createElement("span", { className: "font-semibold" }, 
+                  formatPercentage(item.percentage)
+                )
+              ),
+              React.createElement("div", { className: "w-full bg-gray-200 rounded-full h-2.5" },
+                React.createElement("div", { 
+                  className: "h-2.5 rounded-full",
+                  style: { 
+                    width: `${item.percentage}%`, 
+                    backgroundColor: SERIES_COLORS[index % SERIES_COLORS.length]
+                  } 
+                })
               )
-            ),
-            React.createElement("tbody", {},
-              data.seriesBreakdown.map(function(item, index) {
-                return React.createElement("tr", { key: item.series, className: index % 2 === 0 ? "bg-gray-50" : "" },
-                  React.createElement("td", { className: "py-2" }, item.series),
-                  React.createElement("td", { className: "text-right py-2" }, formatPercentage(item.percentage))
-                );
-              })
-            )
-          )
+            );
+          })
         )
       ),
       
@@ -158,27 +191,37 @@ const LinuxGPUDashboard = () => {
       React.createElement("div", { className: "bg-white rounded-lg shadow p-4" },
         React.createElement("h2", { className: "text-xl font-semibold mb-4" }, "Top 10 Linux GPUs"),
         React.createElement("div", { className: "h-72 overflow-y-auto" },
-          React.createElement("table", { className: "w-full" },
-            React.createElement("thead", {},
-              React.createElement("tr", {},
-                React.createElement("th", { className: "text-left pb-2" }, "GPU Model"),
-                React.createElement("th", { className: "text-right pb-2" }, "Market Share")
+          data.top10GPUs.slice(0, 7).map(function(gpu, index) {
+            const vendor = gpu.vendor || "Unknown";
+            const color = VENDOR_COLORS[vendor] || '#888888';
+            
+            return React.createElement("div", { 
+              key: gpu.model,
+              className: "mb-3"
+            },
+              React.createElement("div", { className: "flex justify-between items-center mb-1" },
+                React.createElement("div", { className: "flex items-center" },
+                  React.createElement("div", { 
+                    className: "w-3 h-3 rounded-full mr-2",
+                    style: { backgroundColor: color }
+                  }),
+                  React.createElement("span", { className: "font-medium text-sm" }, gpu.model)
+                ),
+                React.createElement("span", { className: "font-semibold" }, 
+                  formatPercentage(gpu.percentage)
+                )
+              ),
+              React.createElement("div", { className: "w-full bg-gray-200 rounded-full h-2.5" },
+                React.createElement("div", { 
+                  className: "h-2.5 rounded-full",
+                  style: { 
+                    width: `${gpu.percentage * 5}%`, // Scale for better visibility
+                    backgroundColor: color
+                  } 
+                })
               )
-            ),
-            React.createElement("tbody", {},
-              data.top10GPUs.map(function(gpu, index) {
-                return React.createElement("tr", { 
-                  key: gpu.model, 
-                  className: index % 2 === 0 ? "bg-gray-50" : "" 
-                },
-                  React.createElement("td", { className: "py-2" }, gpu.model),
-                  React.createElement("td", { className: "text-right py-2 font-semibold" }, 
-                    formatPercentage(gpu.percentage)
-                  )
-                );
-              })
-            )
-          )
+            );
+          })
         )
       ),
       
@@ -186,27 +229,36 @@ const LinuxGPUDashboard = () => {
       React.createElement("div", { className: "bg-white rounded-lg shadow p-4" },
         React.createElement("h2", { className: "text-xl font-semibold mb-4" }, "Fastest Growing GPUs"),
         React.createElement("div", { className: "h-72 overflow-y-auto" },
-          React.createElement("table", { className: "w-full" },
-            React.createElement("thead", {},
-              React.createElement("tr", {},
-                React.createElement("th", { className: "text-left pb-2" }, "GPU Model"),
-                React.createElement("th", { className: "text-right pb-2" }, "Monthly Change")
+          data.growingGPUs.map(function(gpu, index) {
+            const vendor = gpu.vendor || "Unknown";
+            const color = VENDOR_COLORS[vendor] || '#888888';
+            
+            return React.createElement("div", { 
+              key: gpu.model,
+              className: "mb-3"
+            },
+              React.createElement("div", { className: "flex justify-between items-center mb-1" },
+                React.createElement("div", { className: "flex items-center" },
+                  React.createElement("div", { 
+                    className: "w-3 h-3 rounded-full mr-2",
+                    style: { backgroundColor: color }
+                  }),
+                  React.createElement("span", { className: "font-medium text-sm" }, gpu.model)
+                ),
+                React.createElement("span", { className: "font-semibold text-green-600" }, 
+                  "+" + gpu.change.toFixed(2) + "%"
+                )
+              ),
+              React.createElement("div", { className: "w-full bg-gray-200 rounded-full h-2.5" },
+                React.createElement("div", { 
+                  className: "h-2.5 rounded-full bg-green-500",
+                  style: { 
+                    width: `${gpu.change * 100}%`, // Scale for better visibility
+                  } 
+                })
               )
-            ),
-            React.createElement("tbody", {},
-              data.growingGPUs.map(function(gpu, index) {
-                return React.createElement("tr", { 
-                  key: gpu.model, 
-                  className: index % 2 === 0 ? "bg-gray-50" : "" 
-                },
-                  React.createElement("td", { className: "py-2" }, gpu.model),
-                  React.createElement("td", { className: "text-right py-2 font-semibold text-green-600" }, 
-                    "+" + gpu.change.toFixed(2) + "%"
-                  )
-                );
-              })
-            )
-          )
+            );
+          })
         )
       )
     ),
