@@ -1,13 +1,44 @@
 import React, { useState, useEffect } from 'react';
 import { PieChart, Pie, BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, Cell } from 'recharts';
 
-const LinuxGPUDashboard = () => {
-  const [data, setData] = useState(null);
+interface VendorMarketShare {
+  vendor: string;
+  percentage: number;
+}
+
+interface GPUData {
+  model: string;
+  vendor: string;
+  percentage: number;
+  change: number;
+}
+
+interface SeriesData {
+  series: string;
+  percentage: number;
+}
+
+interface DashboardData {
+  vendorMarketShare: VendorMarketShare[];
+  top10GPUs: GPUData[];
+  growingGPUs: GPUData[];
+  seriesBreakdown: SeriesData[];
+}
+
+interface RawDataRow {
+  "GPU MODEL": string;
+  " PERCENTAGE": string | number;
+  " CHANGE": string | number;
+  "VENDOR": string;
+}
+
+const LinuxGPUDashboard: React.FC = () => {
+  const [data, setData] = useState<DashboardData | null>(null);
   const [loading, setLoading] = useState(true);
-  const [error, setError] = useState(null);
+  const [error, setError] = useState<string | null>(null);
   
   // Color schemes
-  const VENDOR_COLORS = {
+  const VENDOR_COLORS: Record<string, string> = {
     'AMD': '#ED1C24',
     'NVIDIA': '#76B900',
     'INTEL': '#0071C5',
@@ -22,7 +53,7 @@ const LinuxGPUDashboard = () => {
 
   useEffect(() => {
     // Use hardcoded data based on our previous analysis
-    const dashboardData = {
+    const dashboardData: DashboardData = {
       vendorMarketShare: [
         {vendor: 'AMD', percentage: 69.29},
         {vendor: 'NVIDIA', percentage: 21.14},
@@ -63,12 +94,11 @@ const LinuxGPUDashboard = () => {
       ]
     };
     
-    // Set the data directly
     setData(dashboardData);
     setLoading(false);
   }, []);
   
-  const processData = (rawData) => {
+  const processData = (rawData: RawDataRow[]): DashboardData => {
     // Clean and transform data
     const cleanData = rawData.map(row => {
       const model = row["GPU MODEL"];
@@ -100,7 +130,7 @@ const LinuxGPUDashboard = () => {
     });
     
     // Calculate vendor market share
-    const vendorMarketShare = {};
+    const vendorMarketShare: Record<string, number> = {};
     let totalPercentage = 0;
     
     cleanData.forEach(gpu => {
@@ -111,7 +141,7 @@ const LinuxGPUDashboard = () => {
     });
     
     // Calculate vendor share as percentages of total
-    const vendorSharePercentage = {};
+    const vendorSharePercentage: Record<string, number> = {};
     Object.keys(vendorMarketShare).forEach(vendor => {
       vendorSharePercentage[vendor] = (vendorMarketShare[vendor] / totalPercentage) * 100;
     });
@@ -128,7 +158,7 @@ const LinuxGPUDashboard = () => {
       .slice(0, 5);
     
     // Analyze by GPU series
-    const seriesAnalysis = {};
+    const seriesAnalysis: Record<string, number> = {};
     cleanData.forEach(gpu => {
       let series = "Other";
       
@@ -180,7 +210,7 @@ const LinuxGPUDashboard = () => {
       vendorMarketShare: Object.entries(vendorSharePercentage).map(([vendor, percentage]) => ({
         vendor,
         percentage: parseFloat(percentage.toFixed(2))
-      })).sort((a, b) => b.percentage - a.percentage),
+      })),
       
       top10GPUs: top10GPUs.map(gpu => ({
         model: gpu.model,
@@ -215,7 +245,7 @@ const LinuxGPUDashboard = () => {
     return <div className="p-4">No data available</div>;
   }
   
-  const formatPercentage = (value) => `${value.toFixed(2)}%`;
+  const formatPercentage = (value: number): string => `${value.toFixed(2)}%`;
 
   return (
     <div className="container mx-auto p-4 bg-gray-50">
@@ -237,9 +267,9 @@ const LinuxGPUDashboard = () => {
                 cx="50%"
                 cy="50%"
                 outerRadius={100}
-                label={({ vendor, percentage }) => `${vendor}: ${percentage.toFixed(1)}%`}
+                label={({ vendor, percentage }: { vendor: string; percentage: number }) => `${vendor}: ${percentage.toFixed(1)}%`}
               >
-                {data.vendorMarketShare.map((entry, index) => (
+                {data.vendorMarketShare.map((entry: VendorMarketShare, index: number) => (
                   <Cell key={`cell-${index}`} fill={VENDOR_COLORS[entry.vendor] || SERIES_COLORS[index % SERIES_COLORS.length]} />
                 ))}
               </Pie>
@@ -259,7 +289,7 @@ const LinuxGPUDashboard = () => {
               <YAxis tickFormatter={formatPercentage} />
               <Tooltip formatter={formatPercentage} />
               <Bar dataKey="percentage" name="Market Share">
-                {data.seriesBreakdown.map((entry, index) => (
+                {data.seriesBreakdown.map((entry: SeriesData, index: number) => (
                   <Cell key={`cell-${index}`} fill={SERIES_COLORS[index % SERIES_COLORS.length]} />
                 ))}
               </Bar>
@@ -286,7 +316,7 @@ const LinuxGPUDashboard = () => {
               />
               <Tooltip formatter={formatPercentage} />
               <Bar dataKey="percentage" name="Market Share">
-                {data.top10GPUs.map((entry, index) => (
+                {data.top10GPUs.map((entry: GPUData, index: number) => (
                   <Cell key={`cell-${index}`} fill={VENDOR_COLORS[entry.vendor] || '#888888'} />
                 ))}
               </Bar>
@@ -304,16 +334,19 @@ const LinuxGPUDashboard = () => {
               margin={{ top: 5, right: 30, left: 150, bottom: 5 }}
             >
               <CartesianGrid strokeDasharray="3 3" />
-              <XAxis type="number" tickFormatter={(value) => `+${value.toFixed(2)}%`} />
+              <XAxis type="number" tickFormatter={(value: number) => `+${value.toFixed(2)}%`} />
               <YAxis 
                 type="category" 
                 dataKey="model" 
                 width={150}
                 tick={{ fontSize: 10 }} 
               />
-              <Tooltip formatter={(value) => `+${value.toFixed(2)}%`} labelFormatter={(label) => `Growth`} />
+              <Tooltip 
+                formatter={(value: number) => `+${value.toFixed(2)}%`} 
+                labelFormatter={(label: string) => `Growth`} 
+              />
               <Bar dataKey="change" name="Monthly Change">
-                {data.growingGPUs.map((entry, index) => (
+                {data.growingGPUs.map((entry: GPUData, index: number) => (
                   <Cell key={`cell-${index}`} fill={VENDOR_COLORS[entry.vendor] || '#888888'} />
                 ))}
               </Bar>
@@ -325,7 +358,7 @@ const LinuxGPUDashboard = () => {
       <div className="mt-6 p-4 bg-white rounded-lg shadow">
         <h2 className="text-xl font-semibold mb-4">Key Insights</h2>
         <ul className="list-disc pl-6 space-y-2">
-          <li>AMD dominates the Linux gaming GPU market with {data.vendorMarketShare.find(v => v.vendor === 'AMD')?.percentage.toFixed(2)}% market share.</li>
+          <li>AMD dominates the Linux gaming GPU market with {data.vendorMarketShare.find((v: VendorMarketShare) => v.vendor === 'AMD')?.percentage.toFixed(2)}% market share.</li>
           <li>The AMD Custom GPU 0405 (Steam Deck) is the most common GPU at {data.top10GPUs[0]?.percentage.toFixed(2)}% of all Linux users.</li>
           <li>The AMD Radeon Graphics (RADV VANGOGH) (Steam Deck OLED) is the second most common GPU at {data.top10GPUs[1]?.percentage.toFixed(2)}%.</li>
           <li>The fastest growing GPU is {data.growingGPUs[0]?.model} with +{data.growingGPUs[0]?.change.toFixed(2)}% change.</li>
