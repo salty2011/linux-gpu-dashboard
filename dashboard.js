@@ -1,8 +1,7 @@
-// dashboard.js - Ready for GitHub Pages
-// Use the global variables from the CDN imports
+// dashboard.js - Fixed for GitHub Pages
 const { useState, useEffect } = React;
-const { PieChart, Pie, BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, Cell } = Recharts;
 
+// Define LinuxGPUDashboard component
 const LinuxGPUDashboard = () => {
   const [data, setData] = useState(null);
   const [loading, setLoading] = useState(true);
@@ -71,141 +70,173 @@ const LinuxGPUDashboard = () => {
   }, []);
   
   if (loading) {
-    return <div className="flex items-center justify-center h-screen">Loading Linux GPU data...</div>;
+    return React.createElement("div", { className: "flex items-center justify-center h-screen" }, 
+             "Loading Linux GPU data...");
   }
   
   if (error) {
-    return <div className="text-red-500 p-4">{error}</div>;
+    return React.createElement("div", { className: "text-red-500 p-4" }, error);
   }
   
   if (!data) {
-    return <div className="p-4">No data available</div>;
+    return React.createElement("div", { className: "p-4" }, "No data available");
   }
   
   const formatPercentage = (value) => `${value.toFixed(2)}%`;
 
-  return (
-    <div className="container mx-auto p-4 bg-gray-50 max-w-6xl">
-      <div className="text-center mb-6">
-        <h1 className="text-2xl font-bold mb-2">Linux GPU Usage Dashboard</h1>
-        <p className="text-gray-600">Based on Steam Hardware Survey data</p>
-      </div>
+  // Find AMD market share safely
+  const amdShare = data.vendorMarketShare.find(function(v) { 
+    return v.vendor === 'AMD'; 
+  });
+  const amdPercentage = amdShare ? amdShare.percentage.toFixed(2) : "N/A";
+  
+  // Get top GPU values safely
+  const topGpuPercentage = data.top10GPUs[0] ? data.top10GPUs[0].percentage.toFixed(2) : "N/A";
+  const secondGpuPercentage = data.top10GPUs[1] ? data.top10GPUs[1].percentage.toFixed(2) : "N/A";
+  const combinedPercentage = data.top10GPUs[0] && data.top10GPUs[1] ? 
+    (data.top10GPUs[0].percentage + data.top10GPUs[1].percentage).toFixed(2) : "N/A";
+  
+  // Get growing GPU values safely
+  const topGrowingGpu = data.growingGPUs[0] || {};
+  const topGrowingModel = topGrowingGpu.model || "N/A";
+  const topGrowingChange = topGrowingGpu.change ? topGrowingGpu.change.toFixed(2) : "N/A";
+
+  // Use React.createElement instead of JSX
+  return React.createElement("div", { className: "container mx-auto p-4 bg-gray-50 max-w-6xl" },
+    React.createElement("div", { className: "text-center mb-6" },
+      React.createElement("h1", { className: "text-2xl font-bold mb-2" }, "Linux GPU Usage Dashboard"),
+      React.createElement("p", { className: "text-gray-600" }, "Based on Steam Hardware Survey data")
+    ),
+    
+    React.createElement("div", { className: "grid grid-cols-1 lg:grid-cols-2 gap-6" },
+      // Vendor Market Share
+      React.createElement("div", { className: "bg-white rounded-lg shadow p-4" },
+        React.createElement("h2", { className: "text-xl font-semibold mb-4" }, "Vendor Market Share"),
+        React.createElement("div", { className: "h-72 w-full" }, 
+          data.vendorMarketShare.map(function(item, index) {
+            return React.createElement("div", { 
+              key: item.vendor,
+              className: "flex items-center mb-2" 
+            },
+              React.createElement("div", { 
+                className: "w-4 h-4 mr-2",
+                style: { backgroundColor: VENDOR_COLORS[item.vendor] || SERIES_COLORS[index] }
+              }),
+              React.createElement("div", { className: "flex-1" }, item.vendor),
+              React.createElement("div", { className: "font-semibold" }, 
+                formatPercentage(item.percentage)
+              )
+            );
+          })
+        )
+      ),
       
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        {/* Vendor Market Share */}
-        <div className="bg-white rounded-lg shadow p-4">
-          <h2 className="text-xl font-semibold mb-4">Vendor Market Share</h2>
-          <ResponsiveContainer width="100%" height={300}>
-            <PieChart>
-              <Pie
-                data={data.vendorMarketShare}
-                dataKey="percentage"
-                nameKey="vendor"
-                cx="50%"
-                cy="50%"
-                outerRadius={100}
-                label={({ vendor, percentage }) => `${vendor}: ${percentage.toFixed(1)}%`}
-              >
-                {data.vendorMarketShare.map((entry, index) => (
-                  <Cell key={`cell-${index}`} fill={VENDOR_COLORS[entry.vendor] || SERIES_COLORS[index % SERIES_COLORS.length]} />
-                ))}
-              </Pie>
-              <Tooltip formatter={formatPercentage} />
-              <Legend />
-            </PieChart>
-          </ResponsiveContainer>
-        </div>
-        
-        {/* GPU Series Breakdown */}
-        <div className="bg-white rounded-lg shadow p-4">
-          <h2 className="text-xl font-semibold mb-4">GPU Series Breakdown</h2>
-          <ResponsiveContainer width="100%" height={300}>
-            <BarChart data={data.seriesBreakdown}>
-              <CartesianGrid strokeDasharray="3 3" />
-              <XAxis dataKey="series" tick={{fontSize: 10}} interval={0} angle={-45} textAnchor="end" height={80} />
-              <YAxis tickFormatter={formatPercentage} />
-              <Tooltip formatter={formatPercentage} />
-              <Bar dataKey="percentage" name="Market Share">
-                {data.seriesBreakdown.map((entry, index) => (
-                  <Cell key={`cell-${index}`} fill={SERIES_COLORS[index % SERIES_COLORS.length]} />
-                ))}
-              </Bar>
-            </BarChart>
-          </ResponsiveContainer>
-        </div>
-        
-        {/* Top 10 GPUs */}
-        <div className="bg-white rounded-lg shadow p-4">
-          <h2 className="text-xl font-semibold mb-4">Top 10 Linux GPUs</h2>
-          <ResponsiveContainer width="100%" height={360}>
-            <BarChart 
-              data={data.top10GPUs}
-              layout="vertical"
-              margin={{ top: 5, right: 30, left: 150, bottom: 5 }}
-            >
-              <CartesianGrid strokeDasharray="3 3" />
-              <XAxis type="number" tickFormatter={formatPercentage} />
-              <YAxis 
-                type="category" 
-                dataKey="model" 
-                width={150}
-                tick={{ fontSize: 10 }} 
-              />
-              <Tooltip formatter={formatPercentage} />
-              <Bar dataKey="percentage" name="Market Share">
-                {data.top10GPUs.map((entry, index) => (
-                  <Cell key={`cell-${index}`} fill={VENDOR_COLORS[entry.vendor] || '#888888'} />
-                ))}
-              </Bar>
-            </BarChart>
-          </ResponsiveContainer>
-        </div>
-        
-        {/* Fastest Growing GPUs */}
-        <div className="bg-white rounded-lg shadow p-4">
-          <h2 className="text-xl font-semibold mb-4">Fastest Growing GPUs</h2>
-          <ResponsiveContainer width="100%" height={360}>
-            <BarChart 
-              data={data.growingGPUs}
-              layout="vertical"
-              margin={{ top: 5, right: 30, left: 150, bottom: 5 }}
-            >
-              <CartesianGrid strokeDasharray="3 3" />
-              <XAxis type="number" tickFormatter={(value) => `+${value.toFixed(2)}%`} />
-              <YAxis 
-                type="category" 
-                dataKey="model" 
-                width={150}
-                tick={{ fontSize: 10 }} 
-              />
-              <Tooltip formatter={(value) => `+${value.toFixed(2)}%`} labelFormatter={(label) => `Growth`} />
-              <Bar dataKey="change" name="Monthly Change">
-                {data.growingGPUs.map((entry, index) => (
-                  <Cell key={`cell-${index}`} fill={VENDOR_COLORS[entry.vendor] || '#888888'} />
-                ))}
-              </Bar>
-            </BarChart>
-          </ResponsiveContainer>
-        </div>
-      </div>
+      // GPU Series Breakdown
+      React.createElement("div", { className: "bg-white rounded-lg shadow p-4" },
+        React.createElement("h2", { className: "text-xl font-semibold mb-4" }, "GPU Series Breakdown"),
+        React.createElement("div", { className: "h-72 overflow-y-auto" },
+          React.createElement("table", { className: "w-full" },
+            React.createElement("thead", {},
+              React.createElement("tr", {},
+                React.createElement("th", { className: "text-left pb-2" }, "Series"),
+                React.createElement("th", { className: "text-right pb-2" }, "Market Share")
+              )
+            ),
+            React.createElement("tbody", {},
+              data.seriesBreakdown.map(function(item, index) {
+                return React.createElement("tr", { key: item.series, className: index % 2 === 0 ? "bg-gray-50" : "" },
+                  React.createElement("td", { className: "py-2" }, item.series),
+                  React.createElement("td", { className: "text-right py-2" }, formatPercentage(item.percentage))
+                );
+              })
+            )
+          )
+        )
+      ),
       
-      <div className="mt-6 p-4 bg-white rounded-lg shadow">
-        <h2 className="text-xl font-semibold mb-4">Key Insights</h2>
-        <ul className="list-disc pl-6 space-y-2">
-          <li>AMD dominates the Linux gaming GPU market with {data.vendorMarketShare.find(v => v.vendor === 'AMD')?.percentage.toFixed(2)}% market share.</li>
-          <li>The AMD Custom GPU 0405 (Steam Deck) is the most common GPU at {data.top10GPUs[0]?.percentage.toFixed(2)}% of all Linux users.</li>
-          <li>The AMD Radeon Graphics (RADV VANGOGH) (Steam Deck OLED) is the second most common GPU at {data.top10GPUs[1]?.percentage.toFixed(2)}%.</li>
-          <li>The fastest growing GPU is {data.growingGPUs[0]?.model} with +{data.growingGPUs[0]?.change.toFixed(2)}% change.</li>
-          <li>Steam Deck (AMD Custom GPU 0405 + RADV VANGOGH) accounts for approximately {(data.top10GPUs[0]?.percentage + data.top10GPUs[1]?.percentage).toFixed(2)}% of all Linux gaming.</li>
-        </ul>
-      </div>
+      // Top 10 GPUs
+      React.createElement("div", { className: "bg-white rounded-lg shadow p-4" },
+        React.createElement("h2", { className: "text-xl font-semibold mb-4" }, "Top 10 Linux GPUs"),
+        React.createElement("div", { className: "h-72 overflow-y-auto" },
+          React.createElement("table", { className: "w-full" },
+            React.createElement("thead", {},
+              React.createElement("tr", {},
+                React.createElement("th", { className: "text-left pb-2" }, "GPU Model"),
+                React.createElement("th", { className: "text-right pb-2" }, "Market Share")
+              )
+            ),
+            React.createElement("tbody", {},
+              data.top10GPUs.map(function(gpu, index) {
+                return React.createElement("tr", { 
+                  key: gpu.model, 
+                  className: index % 2 === 0 ? "bg-gray-50" : "" 
+                },
+                  React.createElement("td", { className: "py-2" }, gpu.model),
+                  React.createElement("td", { className: "text-right py-2 font-semibold" }, 
+                    formatPercentage(gpu.percentage)
+                  )
+                );
+              })
+            )
+          )
+        )
+      ),
       
-      <footer className="mt-8 text-center text-gray-500 text-sm">
-        <p>© {new Date().getFullYear()} Linux GPU Dashboard • Data from Steam Hardware Survey</p>
-      </footer>
-    </div>
+      // Fastest Growing GPUs
+      React.createElement("div", { className: "bg-white rounded-lg shadow p-4" },
+        React.createElement("h2", { className: "text-xl font-semibold mb-4" }, "Fastest Growing GPUs"),
+        React.createElement("div", { className: "h-72 overflow-y-auto" },
+          React.createElement("table", { className: "w-full" },
+            React.createElement("thead", {},
+              React.createElement("tr", {},
+                React.createElement("th", { className: "text-left pb-2" }, "GPU Model"),
+                React.createElement("th", { className: "text-right pb-2" }, "Monthly Change")
+              )
+            ),
+            React.createElement("tbody", {},
+              data.growingGPUs.map(function(gpu, index) {
+                return React.createElement("tr", { 
+                  key: gpu.model, 
+                  className: index % 2 === 0 ? "bg-gray-50" : "" 
+                },
+                  React.createElement("td", { className: "py-2" }, gpu.model),
+                  React.createElement("td", { className: "text-right py-2 font-semibold text-green-600" }, 
+                    "+" + gpu.change.toFixed(2) + "%"
+                  )
+                );
+              })
+            )
+          )
+        )
+      )
+    ),
+    
+    // Key Insights
+    React.createElement("div", { className: "mt-6 p-4 bg-white rounded-lg shadow" },
+      React.createElement("h2", { className: "text-xl font-semibold mb-4" }, "Key Insights"),
+      React.createElement("ul", { className: "list-disc pl-6 space-y-2" },
+        React.createElement("li", {}, "AMD dominates the Linux gaming GPU market with ", 
+          amdPercentage, "% market share."),
+        React.createElement("li", {}, "The AMD Custom GPU 0405 (Steam Deck) is the most common GPU at ", 
+          topGpuPercentage, "% of all Linux users."),
+        React.createElement("li", {}, "The AMD Radeon Graphics (RADV VANGOGH) (Steam Deck OLED) is the second most common GPU at ", 
+          secondGpuPercentage, "%."),
+        React.createElement("li", {}, "The fastest growing GPU is ", 
+          topGrowingModel, " with +", topGrowingChange, "% change."),
+        React.createElement("li", {}, "Steam Deck (AMD Custom GPU 0405 + RADV VANGOGH) accounts for approximately ", 
+          combinedPercentage, "% of all Linux gaming.")
+      )
+    ),
+    
+    // Footer
+    React.createElement("footer", { className: "mt-8 text-center text-gray-500 text-sm" },
+      React.createElement("p", {}, "© " + new Date().getFullYear() + " Linux GPU Dashboard • Data from Steam Hardware Survey")
+    )
   );
 };
 
 // Render the component
-ReactDOM.render(<LinuxGPUDashboard />, document.getElementById('root'));
+ReactDOM.render(
+  React.createElement(LinuxGPUDashboard, null),
+  document.getElementById('root')
+);
